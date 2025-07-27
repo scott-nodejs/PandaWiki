@@ -28,7 +28,7 @@ export type ItemProps = HTMLAttributes<HTMLDivElement> & {
   handleRemove?: () => void;
 };
 
-interface LinkItemProps extends HTMLAttributes<HTMLDivElement> {
+interface LinkItemProps {
   linkId: string;
   linkIndex: number;
   groupIndex: number;
@@ -39,9 +39,12 @@ interface LinkItemProps extends HTMLAttributes<HTMLDivElement> {
   withOpacity?: boolean;
   isDragging?: boolean;
   dragHandleProps?: any;
+  style?: CSSProperties;
+  className?: string;
 }
 
 const LinkItem = forwardRef<HTMLDivElement, LinkItemProps>(({
+  linkId,
   linkIndex,
   groupIndex,
   control,
@@ -52,7 +55,7 @@ const LinkItem = forwardRef<HTMLDivElement, LinkItemProps>(({
   isDragging,
   dragHandleProps,
   style,
-  ...props
+  className,
 }, ref) => {
   const inlineStyles: CSSProperties = {
     opacity: withOpacity ? '0.5' : '1',
@@ -61,7 +64,7 @@ const LinkItem = forwardRef<HTMLDivElement, LinkItemProps>(({
   };
 
   return (
-    <Box ref={ref} style={inlineStyles} {...props}>
+    <Box ref={ref} style={inlineStyles} className={className}>
       <Stack gap={1} alignItems="center" direction="row">
         <IconButton
           size="small"

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线客服测试页面</title>
+    <link rel="stylesheet" href="http://localhost:8080/widget-bot.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🤖 在线客服功能测试</h1>
+    
+    <div class="test-section">
+        <h2>📋 测试信息</h2>
+        <p><strong>知识库ID:</strong> 7333663447fc415c8ac4349bbf0876e3</p>
+        <p><strong>服务地址:</strong> http://localhost:8080</p>
+        <p><strong>测试时间:</strong> <span id="test-time"></span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 测试结果</h2>
+        <div id="test-results">
+            <div class="status info">正在测试...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>📝 说明</h2>
+        <p>1. 如果在线客服正常工作，您应该在页面右侧看到一个"在线客服"按钮</p>
+        <p>2. 点击按钮应该会弹出聊天窗口</p>
+        <p>3. 按钮可以拖动到不同位置</p>
+        <p>4. 如果没有显示，请查看下方的测试结果</p>
+    </div>
+
+    <script>
+        // 显示测试时间
+        document.getElementById('test-time').textContent = new Date().toLocaleString();
+        
+        // 测试结果容器
+        const resultsContainer = document.getElementById('test-results');
+        
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            resultsContainer.appendChild(div);
+        }
+        
+        // 清除初始状态
+        resultsContainer.innerHTML = '';
+        
+        // 测试1: 检查CSS是否加载
+        const cssLoaded = document.querySelector('link[href*="widget-bot.css"]');
+        if (cssLoaded) {
+            addResult('success', '✅ CSS样式文件已加载');
+        } else {
+            addResult('error', '❌ CSS样式文件加载失败');
+        }
+        
+        // 测试2: 测试API接口
+        fetch('http://localhost:8080/client/v1/app/widget/info', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-KB-ID': '7333663447fc415c8ac4349bbf0876e3'
+            }
+        })
+        .then(response => {
+            if (response.ok) {
+                addResult('success', '✅ API接口连接成功');
+                return response.json();
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        })
+        .then(data => {
+            if (data.success && data.data.settings && data.data.settings.widget_bot_settings) {
+                const settings = data.data.settings.widget_bot_settings;
+                addResult('success', `✅ Widget配置获取成功: 开启状态=${settings.is_open}, 主题=${settings.theme_mode}`);
+                
+                if (settings.is_open) {
+                    addResult('success', '✅ 在线客服已开启');
+                } else {
+                    addResult('error', '❌ 在线客服未开启');
+                }
+            } else {
+                addResult('error', '❌ API响应格式错误');
+            }
+        })
+        .catch(error => {
+            addResult('error', `❌ API接口测试失败: ${error.message}`);
+        });
+        
+        // 测试3: 等待widget脚本加载
+        let widgetCheckCount = 0;
+        const checkWidget = () => {
+            widgetCheckCount++;
+            const widgetButton = document.querySelector('.widget-bot-button');
+            
+            if (widgetButton) {
+                addResult('success', '✅ 在线客服按钮已显示');
+            } else if (widgetCheckCount < 10) {
+                setTimeout(checkWidget, 1000);
+            } else {
+                addResult('error', '❌ 等待10秒后仍未发现在线客服按钮');
+            }
+        };
+        
+        // 延迟检查widget按钮
+        setTimeout(checkWidget, 2000);
+        
+        // 设置全局变量
+        window.WIDGET_KB_ID = '7333663447fc415c8ac4349bbf0876e3';
+        
+        // 监听console错误
+        window.addEventListener('error', function(e) {
+            addResult('error', `❌ JavaScript错误: ${e.message}`);
+        });
+    </script>
+    
+    <!-- 加载widget脚本 -->
+    <script src="http://localhost:8080/widget-bot.js" data-kb-id="7333663447fc415c8ac4349bbf0876e3"></script>
+</body>
+</html> 

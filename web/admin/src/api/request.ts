@@ -29,6 +29,21 @@ const request = <T>(options: AxiosRequestConfig): Promise<T> => {
     headers: {
       Authorization: `Bearer ${token}`,
     },
+    // 自定义参数序列化器，数组参数不使用方括号
+    paramsSerializer: {
+      serialize: (params: Record<string, any>) => {
+        const searchParams = new URLSearchParams();
+        for (const [key, value] of Object.entries(params)) {
+          if (Array.isArray(value)) {
+            // 数组参数：node_ids=xx&node_ids=ccc
+            value.forEach(item => searchParams.append(key, item));
+          } else if (value !== undefined && value !== null) {
+            searchParams.append(key, value);
+          }
+        }
+        return searchParams.toString();
+      }
+    }
   }
   const service: AxiosInstance = axios.create(config);
   service.interceptors.response.use(

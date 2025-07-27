@@ -108,7 +108,7 @@ const Layout = async ({
         <>{parse(kbDetail.settings.head_code, options)}</>
       )}
     </head>
-    <body className={`${gilory.variable}`}>
+    <body className={`${gilory.variable}`} suppressHydrationWarning={true}>
       <ThemeProvider theme={themeMode === 'dark' ? darkTheme : lightTheme}>
         <AppRouterCacheProvider>
           <StoreProvider

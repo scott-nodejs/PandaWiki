@@ -83,33 +83,52 @@ class SSEClient<T> {
     this.buffer += this.textDecoder.decode(chunk, { stream: true });
     const lines = this.buffer.split('\n');
 
+    // 如果最后一行不是完整的，保留在buffer中
+    this.buffer = lines.pop() || '';
+
     let currentData = '';
     let isDataLine = false;
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
+      console.log('SSE原始行数据:', line); // 添加调试日志
+      
       if (line.startsWith('data: ')) {
+        const dataContent = line.slice(6);
         if (isDataLine) {
           currentData += '\n';
         }
-        currentData += line.slice(6);
+        currentData += dataContent;
         isDataLine = true;
-      } else if (line === '') {
+        console.log('SSE data行内容:', currentData); // 添加调试日志
+      } else if (line.startsWith('data:')) {
+        // 处理data:格式（冒号后面可能没有空格）
+        const dataContent = line.slice(5);
         if (isDataLine) {
+          currentData += '\n';
+        }
+        currentData += dataContent;
+        isDataLine = true;
+        console.log('SSE data行内容(无空格):', currentData); // 添加调试日志
+      } else if (line === '') {
+        if (isDataLine && currentData.trim()) { // 确保有实际数据再解析
+          const trimmedData = currentData.trim(); // 去除前后空白字符
+          console.log('准备解析JSON数据:', trimmedData); // 添加调试日志
           try {
-            const data = JSON.parse(currentData) as T;
+            const data = JSON.parse(trimmedData) as T;
+            console.log('JSON解析成功:', data); // 添加调试日志
             callback(data);
           } catch (error) {
-            console.error(error)
-            this.options.onError?.(new Error('Failed to parse SSE data'));
+            console.error('JSON解析失败:');
+            console.error('原始数据:', currentData);
+            console.error('清理后数据:', trimmedData);
+            console.error('解析错误:', error);
           }
           currentData = '';
           isDataLine = false;
         }
       }
     }
-
-    this.buffer = lines[lines.length - 1];
   }
 
   public unsubscribe() {

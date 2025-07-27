@@ -24,6 +24,15 @@ const ChatResult = ({ conversation, answer, loading, thinking, onSearch, handleS
   const [input, setInput] = useState('')
   const { mobile = false, themeMode = 'light' } = useStore()
 
+  // 添加调试日志
+  console.log('ChatResult渲染状态:', { 
+    conversationLength: conversation.length,
+    answer: answer,
+    loading: loading,
+    thinking: thinking,
+    lastConversation: conversation[conversation.length - 1]
+  });
+
   const handleSearch = () => {
     if (input.length > 0) {
       onSearch(input)

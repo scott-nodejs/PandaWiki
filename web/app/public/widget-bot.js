@@ -3,14 +3,15 @@
 
   // 获取当前脚本的域名
   const currentScript = document.currentScript || document.querySelector('script[src*="widget-bot.js"]');
-  const widgetDomain = currentScript ? new URL(currentScript.src).origin : window.location.origin;
+  // 修复：API服务在8080端口，而不是脚本的来源端口
+  const widgetDomain = 'http://localhost:8080'; // 直接指向后端API服务
 
   let widgetInfo = null;
   let widgetButton = null;
   let widgetModal = null;
   let isDragging = false;
   let dragOffset = { x: 0, y: 0 };
-  let currentTheme = 'light'; // 默认浅色主题
+  let currentTheme = 'dark'; // 默认浅色主题
 
   // 应用主题
   function applyTheme(theme_mode) {
@@ -35,10 +36,21 @@
     }
 
     try {
+      // 从脚本标签获取知识库ID
+      const kbId = currentScript?.getAttribute('data-kb-id') || 
+                   document.querySelector('script[src*="widget-bot.js"]')?.getAttribute('data-kb-id') ||
+                   window.WIDGET_KB_ID ||
+                   '7333663447fc415c8ac4349bbf0876e3'; // 临时写死当前知识库ID
+
+      if (!kbId) {
+        throw new Error('知识库ID未配置，请在script标签中添加data-kb-id属性');
+      }
+
       const response = await fetch(`${widgetDomain}/client/v1/app/widget/info`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'X-KB-ID': kbId
         },
         credentials: 'same-origin'
       });
@@ -48,11 +60,25 @@
       }
 
       const data = await response.json();
+      
+      // 检查API响应结构
+      if (!data.success || !data.data) {
+        throw new Error('API响应格式错误');
+      }
+      
       widgetInfo = data.data.settings?.widget_bot_settings;
 
       // 验证返回的数据结构
       if (!widgetInfo || typeof widgetInfo !== 'object') {
         throw new Error('Invalid widget info response');
+      }
+
+      console.log('widgetInfo', widgetInfo);
+
+      // 检查是否开启了在线客服
+      if (!widgetInfo.is_open) {
+        console.log('在线客服未开启');
+        return; // 不显示widget
       }
 
       // 应用主题模式
@@ -67,7 +93,7 @@
       widgetInfo = {
         btn_text: '在线客服',
         btn_logo: '',
-        theme_mode: 'light'
+        theme_mode: 'dark'
       };
       applyTheme(widgetInfo.theme_mode);
       createWidget();
@@ -212,7 +238,8 @@
     // 创建iframe
     const iframe = document.createElement('iframe');
     iframe.className = 'widget-bot-iframe';
-    iframe.src = `${widgetDomain}/widget`;
+    // 修复：widget页面在前端3010端口
+    iframe.src = `http://localhost:3010/widget`;
     iframe.setAttribute('title', `${widgetInfo.btn_text}服务窗口`);
     iframe.setAttribute('allow', 'camera; microphone; geolocation');
     iframe.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-forms allow-popups allow-presentation');

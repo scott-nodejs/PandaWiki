@@ -6,7 +6,7 @@ import { Ellipsis } from "ct-mui";
 import Link from "next/link";
 
 const NodeFolder = ({ node }: { node: RecommendNode }) => {
-  const children = node.recommend_nodes?.sort((a, b) => (a.position ?? 0) - (b.position ?? 0)) || []
+  const children = node.recommend_nodes?.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)) || []
   return <Stack direction="column" justifyContent="space-between" sx={{ cursor: 'pointer', height: '100%' }}>
     <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexShrink: 0 }}>
       {node.emoji ? <Box sx={{ flexShrink: 0, fontSize: 14 }}>{node.emoji}</Box> : <IconFolder sx={{ flexShrink: 0 }} />}

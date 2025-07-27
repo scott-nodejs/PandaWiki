@@ -44,7 +44,7 @@ const Layout = async ({
   const themeMode = widgetDetail?.settings?.widget_bot_settings?.theme_mode || 'light'
 
   return <html lang="en">
-    <body className={`${gilory.variable}`}>
+    <body className={`${gilory.variable}`} suppressHydrationWarning={true}>
       <ThemeProvider theme={themeMode === 'dark' ? darkTheme : lightTheme}>
         <AppRouterCacheProvider>
           <StoreProvider

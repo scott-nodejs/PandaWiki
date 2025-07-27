@@ -95,7 +95,7 @@ export type RecommendNode = {
   emoji: string,
   parent_id: string,
   summary: string
-  position: number
+  sort: number, // 从position改为sort
   recommend_nodes?: RecommendNode[]
 }
 
@@ -118,13 +118,15 @@ export interface NodeListItem {
   name: string,
   type: 1 | 2,
   emoji: string,
-  position: number,
-  parent_id: string,
-  summary: string,
+  sort: number, // 从position改为sort，匹配后端字段
+  parent_id: string | null, // 添加null类型
+  summary: string | null, // 添加null类型
   created_at: string,
   updated_at: string,
   status: 1 | 2 // 1 草稿 2 发布
   visibility: 1 | 2 // 1 私有 2 公开
+  kb_id: string, // 添加kb_id字段
+  children?: NodeListItem[] | null // 添加children字段支持树形结构
 }
 
 export interface ChunkResultItem {

@@ -141,7 +141,9 @@ export type NodeDetail = {
   kb_id: string,
   status: 1 | 2,
   parent_id: string | null,
-  meta: {
+  summary?: string,    // 后端返回的平铺字段
+  emoji?: string,      // 后端返回的平铺字段
+  meta?: {             // 兼容旧版本的嵌套结构
     emoji?: string,
     summary?: string
   },

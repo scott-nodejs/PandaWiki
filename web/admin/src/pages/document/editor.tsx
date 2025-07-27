@@ -5,7 +5,7 @@ import { Box, Stack, useMediaQuery } from "@mui/material";
 import { Message } from "ct-mui";
 import { TiptapEditor, TiptapToolbar, useTiptapEditor } from 'ct-tiptap-editor';
 import dayjs, { Dayjs } from "dayjs";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import VersionPublish from "../release/components/VersionPublish";
 import EditorDocNav from "./component/EditorDocNav";
@@ -15,6 +15,7 @@ import EditorSummary from "./component/EditorSummary";
 
 const DocEditor = () => {
   const timer = useRef<NodeJS.Timeout | null>(null)
+  const updateTimer = useRef<NodeJS.Timeout | null>(null)
   const { id = '' } = useParams()
   const dispatch = useAppDispatch()
   const isWideScreen = useMediaQuery('(min-width:1400px)')
@@ -24,38 +25,48 @@ const DocEditor = () => {
   const [headings, setHeadings] = useState<{ id: string, title: string, heading: number }[]>([])
   const [maxH, setMaxH] = useState(0)
   const [publishOpen, setPublishOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const getDetail = () => {
     getNodeDetail({ id }).then(res => {
       setDetail(res)
       setEdited(false)
       dispatch(setKbId(res.kb_id))
-      setUpdateAt(dayjs(res.updated_at))
+      // 安全地解析时间，如果失败则使用当前时间
+      try {
+        setUpdateAt(res.updated_at ? dayjs(res.updated_at) : dayjs())
+      } catch (error) {
+        console.warn('Failed to parse updated_at:', res.updated_at, error)
+        setUpdateAt(dayjs())
+      }
+    }).catch(error => {
+      console.error('Failed to get node detail:', error)
+      Message.error('获取文档详情失败')
     })
   }
 
-  const updateNav = async () => {
-    if (!editorRef) return
-    const headings = await editorRef.getNavs() || []
-    setHeadings(headings)
-    setMaxH(Math.min(...headings.map((h: any) => h.heading)))
-  }
-
-  const handleSave = async (auto?: boolean, publish?: boolean, html?: string) => {
-    if (!editorRef || !detail) return
-    const content = html || editorRef.getHtml()
-    try {
-      await updateNode({ id, content, kb_id: detail.kb_id })
-      if (auto === true) Message.success('自动保存成功')
-      else if (auto === undefined) Message.success('保存成功')
+  // 使用useCallback来稳定函数引用，避免闭包问题
+  const getDetailCallback = useCallback(() => {
+    if (!id) return
+    setLoading(true)
+    getNodeDetail({ id }).then(res => {
+      setDetail(res)
       setEdited(false)
-      if (publish) setPublishOpen(true)
-      setUpdateAt(dayjs())
-      updateNav()
-    } catch (error) {
-      Message.error('保存失败')
-    }
-  }
+      dispatch(setKbId(res.kb_id))
+      // 安全地解析时间，如果失败则使用当前时间
+      try {
+        setUpdateAt(res.updated_at ? dayjs(res.updated_at) : dayjs())
+      } catch (error) {
+        console.warn('Failed to parse updated_at:', res.updated_at, error)
+        setUpdateAt(dayjs())
+      }
+    }).catch(error => {
+      console.error('Failed to get node detail:', error)
+      Message.error('获取文档详情失败')
+    }).finally(() => {
+      setLoading(false)
+    })
+  }, [id, dispatch])
 
   const handleUpload = async (
     file: File,
@@ -79,57 +90,161 @@ const DocEditor = () => {
     size: 100,
     aiUrl: '/api/v1/creation/text',
     onUpload: handleUpload,
-    onSave: (html) => handleSave(undefined, false, html),
-    onUpdate: () => setEdited(true),
+    onSave: (html) => {
+      // 避免循环引用，直接在这里处理保存逻辑
+      if (!editorRef || !detail) return
+      const content = html || editorRef.getHtml()
+      updateNode({ id, content, kb_id: detail.kb_id }).then(() => {
+        Message.success('保存成功')
+        setEdited(false)
+        setUpdateAt(dayjs())
+      }).catch(() => {
+        Message.error('保存失败')
+      })
+    },
+    onUpdate: () => {
+      // 添加防抖，避免频繁触发状态更新
+      if (updateTimer.current) clearTimeout(updateTimer.current)
+      updateTimer.current = setTimeout(() => {
+        setEdited(true)
+      }, 100) // 100ms防抖
+    },
     onError: (error: Error) => {
       Message.error(error.message)
     }
   })
 
+  // 在editorRef定义之后定义handleSave
+  const handleSave = useCallback(async (auto?: boolean, publish?: boolean, html?: string) => {
+    if (!editorRef || !detail) return
+    const content = html || editorRef.getHtml()
+    try {
+      await updateNode({ id, content, kb_id: detail.kb_id })
+      if (auto === true) Message.success('自动保存成功')
+      else if (auto === undefined) Message.success('保存成功')
+      setEdited(false)
+      if (publish) setPublishOpen(true)
+      setUpdateAt(dayjs())
+      // 更新导航
+      if (editorRef) {
+        const headings = await editorRef.getNavs() || []
+        setHeadings(headings)
+        setMaxH(Math.min(...headings.map((h: any) => h.heading)))
+      }
+    } catch (error) {
+      Message.error('保存失败')
+    }
+  }, [editorRef, detail, id])
+
+  // 处理编辑器内容设置，避免在用户输入时重复设置内容
   useEffect(() => {
     if (timer.current) clearInterval(timer.current)
-    if (detail && editorRef) {
-      editorRef.setContent(detail.content || '').then((headings) => {
-        setHeadings(headings)
-        setMaxH(Math.min(...headings.map(h => h.heading)))
-      })
+    
+    // 只有在编辑器存在、有详情数据，且当前没有编辑状态时才设置内容
+    if (detail && editorRef && detail.content !== undefined && !edited) {
+      // 检查当前编辑器内容是否与服务端内容不同，避免不必要的设置
+      const currentContent = editorRef.getHtml() || ''
+      const serverContent = detail.content || ''
+      
+      if (currentContent !== serverContent) {
+        console.log('Setting content from server:', { currentContent, serverContent })
+        // 使用防抖，避免频繁调用
+        const timeoutId = setTimeout(() => {
+          editorRef.setContent(serverContent).then((headings) => {
+            setHeadings(headings)
+            setMaxH(Math.min(...headings.map(h => h.heading)))
+          }).catch(error => {
+            console.error('Failed to set content:', error)
+          })
+        }, 100)
+        
+        return () => {
+          clearTimeout(timeoutId)
+        }
+      }
+      
+      // 设置自动保存定时器（不管内容是否相同都需要设置）
       timer.current = setInterval(() => {
-        handleSave(true)
+        if (editorRef && detail && edited) { // 只有编辑过才自动保存
+          const content = editorRef.getHtml()
+          updateNode({ id, content, kb_id: detail.kb_id }).then(() => {
+            Message.success('自动保存成功')
+            setEdited(false)
+            setUpdateAt(dayjs())
+          }).catch(() => {
+            Message.error('保存失败')
+          })
+        }
       }, 1000 * 60)
     }
+    
     return () => {
-      if (timer.current) clearInterval(timer.current)
+      if (updateTimer.current) clearInterval(updateTimer.current)
     }
-  }, [detail])
+  }, [detail?.id, editorRef, edited]) // 移除 detail?.content 依赖，添加 edited 状态
 
+  // 创建ref来存储最新状态，避免闭包问题
+  const latestStateRef = useRef({ edited, editorRef, detail, id })
+  useEffect(() => {
+    latestStateRef.current = { edited, editorRef, detail, id }
+  })
+
+  // 处理页面路由变化，重置状态并获取新数据
   useEffect(() => {
     if (id) {
       if (timer.current) clearInterval(timer.current)
-      getDetail()
+      // 重置状态
+      setDetail(null)
+      setEdited(false)
+      setLoading(true)
+      
+      // 使用稳定的回调函数获取数据
+      getDetailCallback()
+      
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' })
       }, 60)
     }
 
     const handleVisibilityChange = () => {
-      if (document.hidden && edited) {
-        handleSave(true)
+      const { edited, editorRef, detail, id } = latestStateRef.current
+      if (document.hidden && edited && editorRef && detail) {
+        // 直接调用保存逻辑，使用最新状态
+        const content = editorRef.getHtml()
+        updateNode({ id, content, kb_id: detail.kb_id }).then(() => {
+          Message.success('自动保存成功')
+          setEdited(false)
+          setUpdateAt(dayjs())
+        }).catch(() => {
+          Message.error('保存失败')
+        })
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
-  }, [id])
+  }, [id, getDetailCallback]) // 只依赖 id 和稳定的 getDetailCallback
 
   // 当从窄屏切换到宽屏时，如果还没有数据则请求
   useEffect(() => {
-    if (isWideScreen && id && !detail) {
-      getDetail()
+    if (isWideScreen && id && !detail && !loading) {
+      getDetailCallback()
     }
-  }, [isWideScreen, id, detail])
+  }, [isWideScreen, id, detail, loading, getDetailCallback])
 
-  if (!editorRef) return <></>
+  // 如果正在加载或编辑器未初始化，显示loading状态
+  if (!editorRef || loading) {
+    return <Box sx={{ 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      height: '100vh',
+      color: 'text.primary'
+    }}>
+      加载中...
+    </Box>
+  }
 
   return <Box sx={{ color: 'text.primary', pb: 2 }}>
     {/* 固定头部 */}
@@ -225,7 +340,7 @@ const DocEditor = () => {
               kb_id={detail?.kb_id || ''}
               id={detail?.id || ''}
               name={detail?.name || ''}
-              summary={detail?.meta.summary || ''}
+              summary={detail?.summary || detail?.meta?.summary || ''}
             />
             <EditorDocNav
               title={detail?.name}

@@ -2,7 +2,7 @@
 
 import { NodeListItem } from "@/assets/type"
 import { IconArrowDown, IconNav } from "@/components/icons"
-import { convertToTree } from '@/utils/drag'
+import { convertFromTreeData } from '@/utils/drag'
 import { Box, Stack } from "@mui/material"
 import { useEffect, useState } from "react"
 import CatalogFolder from './CatalogFolder'
@@ -13,7 +13,10 @@ const CatalogH5 = ({
   nodes: NodeListItem[]
 }) => {
   const [open, setOpen] = useState(false)
-  const tree = convertToTree(nodes)
+  
+  // 检查数据是否已经是树形结构
+  const hasChildren = nodes.some(node => node.children && node.children.length > 0)
+  const tree = hasChildren ? convertFromTreeData(nodes) : convertFromTreeData(nodes) // 使用convertFromTreeData处理树形数据
 
   useEffect(() => {
     if (open) {

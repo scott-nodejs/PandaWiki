@@ -119,10 +119,10 @@ const System = () => {
           </> : <>
             <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'} gap={1} sx={{ mt: 1 }}>
               <Stack direction={'row'} alignItems={'center'} gap={1} sx={{ width: 500 }}>
-                <Icon type={ModelProvider[chatModelData.provider as keyof typeof ModelProvider].icon} sx={{ fontSize: 18 }} />
+                <Icon type={ModelProvider[chatModelData.provider as keyof typeof ModelProvider]?.icon || 'icon-a-AIshezhi'} sx={{ fontSize: 18 }} />
                 <Box sx={{ fontSize: 14, lineHeight: '20px', color: 'text.auxiliary' }}>
-                  {ModelProvider[chatModelData.provider as keyof typeof ModelProvider].cn
-                    || ModelProvider[chatModelData.provider as keyof typeof ModelProvider].label
+                  {ModelProvider[chatModelData.provider as keyof typeof ModelProvider]?.cn
+                    || ModelProvider[chatModelData.provider as keyof typeof ModelProvider]?.label
                     || '其他'}&nbsp;&nbsp;/
                 </Box>
                 <Box sx={{ fontSize: 14, lineHeight: '20px', fontFamily: 'Gbold', ml: -0.5 }}>{chatModelData.model}</Box>
@@ -194,10 +194,10 @@ const System = () => {
           </> : <>
             <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'} gap={1}>
               <Stack direction={'row'} alignItems={'center'} gap={1} sx={{ width: 500 }}>
-                <Icon type={ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider].icon} sx={{ fontSize: 18 }} />
+                <Icon type={ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider]?.icon || 'icon-a-AIshezhi'} sx={{ fontSize: 18 }} />
                 <Box sx={{ fontSize: 14, lineHeight: '20px', color: 'text.auxiliary' }}>
-                  {ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider].cn
-                    || ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider].label
+                  {ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider]?.cn
+                    || ModelProvider[embeddingModelData.provider as keyof typeof ModelProvider]?.label
                     || '其他'}&nbsp;&nbsp;/
                 </Box>
                 <Box sx={{ fontSize: 14, lineHeight: '20px', fontFamily: 'Gbold', ml: -0.5 }}>{embeddingModelData.model}</Box>
@@ -269,10 +269,10 @@ const System = () => {
           </> : <>
             <Stack direction={'row'} alignItems={'center'} justifyContent={'space-between'} gap={1}>
               <Stack direction={'row'} alignItems={'center'} gap={1} sx={{ width: 500 }}>
-                <Icon type={ModelProvider[rerankModelData.provider as keyof typeof ModelProvider].icon} sx={{ fontSize: 18 }} />
+                <Icon type={ModelProvider[rerankModelData.provider as keyof typeof ModelProvider]?.icon || 'icon-a-AIshezhi'} sx={{ fontSize: 18 }} />
                 <Box sx={{ fontSize: 14, lineHeight: '20px', color: 'text.auxiliary' }}>
-                  {ModelProvider[rerankModelData.provider as keyof typeof ModelProvider].cn
-                    || ModelProvider[rerankModelData.provider as keyof typeof ModelProvider].label
+                  {ModelProvider[rerankModelData.provider as keyof typeof ModelProvider]?.cn
+                    || ModelProvider[rerankModelData.provider as keyof typeof ModelProvider]?.label
                     || '其他'}&nbsp;&nbsp;/
                 </Box>
                 <Box sx={{ fontSize: 14, lineHeight: '20px', fontFamily: 'Gbold', ml: -0.5 }}>{rerankModelData.model}</Box>

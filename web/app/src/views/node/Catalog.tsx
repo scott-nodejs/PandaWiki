@@ -2,7 +2,7 @@
 
 import { IconFold, IconUnfold } from "@/components/icons";
 import { useStore } from "@/provider";
-import { addExpandState, convertToTree, filterEmptyFolders } from "@/utils/drag";
+import { addExpandState, convertToTree, convertFromTreeData, filterEmptyFolders } from "@/utils/drag";
 import { Box, IconButton } from "@mui/material";
 import CatalogFolder from "./CatalogFolder";
 
@@ -11,7 +11,11 @@ const Catalog = ({ id, setId }: { id?: string, setId?: (id: string) => void }) =
   if (mobile) return null
   const catalogSetting = kbDetail?.settings?.catalog_settings
   const catalogFolderExpand = catalogSetting?.catalog_folder !== 2
-  const tree = addExpandState(filterEmptyFolders(convertToTree(nodeList) || []), id as string, catalogFolderExpand)
+  
+  // 检查数据是否已经是树形结构
+  const hasChildren = nodeList.some(node => node.children && node.children.length > 0)
+  const treeData = hasChildren ? convertFromTreeData(nodeList) : convertToTree(nodeList)
+  const tree = addExpandState(filterEmptyFolders(treeData || []), id as string, catalogFolderExpand)
 
   return <>
     <Box sx={{

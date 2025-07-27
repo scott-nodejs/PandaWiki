@@ -52,14 +52,21 @@ const DocAddByCustomText = ({ open, data, onClose, refresh, type = 2 }: DocAddBy
   }
 
   useEffect(() => {
-    if (data) {
-      reset({
-        name: data.name || '',
-        emoji: data.emoji || '',
-      })
+    // 只在弹窗打开状态变化时重置表单
+    if (open) {
+      if (data) {
+        reset({
+          name: data.name || '',
+          emoji: data.emoji || '',
+        })
+      } else {
+        reset({
+          name: '',
+          emoji: '',
+        })
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data])
+  }, [open, data?.id]) // 只依赖 open 和 data?.id
 
   return <Modal
     title={data ? `编辑${text}` : `创建${text}`}

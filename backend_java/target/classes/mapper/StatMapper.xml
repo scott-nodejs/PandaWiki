@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.chaitin.pandawiki.mapper.StatMapper">
+
+    <!-- 节点访问统计 -->
+    <select id="getNodeAccessStats" resultType="com.chaitin.pandawiki.model.stat.NodeAccessStat">
+        SELECT 
+            DATE(access_time) as date,
+            COUNT(*) as accessCount,
+            COUNT(DISTINCT user_id) as userCount,
+            AVG(duration) as avgDuration
+        FROM user_access_log
+        WHERE kb_id = #{kbId}
+        AND node_id = #{nodeId}
+        AND DATE(access_time) BETWEEN #{fromDate} AND #{toDate}
+        GROUP BY DATE(access_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 用户访问统计 -->
+    <select id="getUserAccessStats" resultType="com.chaitin.pandawiki.model.stat.UserAccessStat">
+        SELECT 
+            DATE(access_time) as date,
+            user_id as userId,
+            COUNT(*) as accessCount,
+            COUNT(DISTINCT node_id) as nodeCount,
+            SUM(duration) as totalDuration
+        FROM user_access_log
+        WHERE kb_id = #{kbId}
+        AND DATE(access_time) BETWEEN #{fromDate} AND #{toDate}
+        GROUP BY DATE(access_time), user_id
+        ORDER BY date ASC, accessCount DESC
+    </select>
+
+    <!-- 会话统计 -->
+    <select id="getConversationStats" resultType="com.chaitin.pandawiki.model.stat.ConversationStat">
+        SELECT 
+            DATE(c.create_time) as date,
+            COUNT(DISTINCT c.id) as conversationCount,
+            COUNT(m.id) as messageCount,
+            COUNT(DISTINCT c.user_id) as userCount,
+            SUM(m.total_tokens) as totalTokens,
+            AVG(m.response_time) as avgResponseTime
+        FROM conversation c
+        LEFT JOIN conversation_message m ON c.id = m.conversation_id
+        WHERE c.kb_id = #{kbId}
+        AND DATE(c.create_time) BETWEEN #{fromDate} AND #{toDate}
+        GROUP BY DATE(c.create_time)
+        ORDER BY date ASC
+    </select>
+
+    <!-- 模型使用统计 -->
+    <select id="getModelUsageStats" resultType="com.chaitin.pandawiki.model.stat.ModelUsageStat">
+        SELECT 
+            DATE(create_time) as date,
+            model_id as modelId,
+            COUNT(*) as callCount,
+            SUM(total_tokens) as totalTokens,
+            AVG(response_time) as avgResponseTime,
+            SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as successRate
+        FROM model_usage_log
+        WHERE kb_id = #{kbId}
+        AND DATE(create_time) BETWEEN #{fromDate} AND #{toDate}
+        GROUP BY DATE(create_time), model_id
+        ORDER BY date ASC, callCount DESC
+    </select>
+
+    <!-- 热门页面统计 -->
+    <select id="getHotPages" resultType="com.chaitin.pandawiki.dto.stat.HotPageResponse">
+        SELECT 
+            sp.scene,
+            sp.node_id as nodeId,
+            n.name as nodeName,
+            COUNT(*) as count
+        FROM stat_page sp
+        LEFT JOIN node n ON sp.node_id COLLATE utf8mb4_unicode_ci = n.id COLLATE utf8mb4_unicode_ci 
+                         AND sp.kb_id COLLATE utf8mb4_unicode_ci = n.kb_id COLLATE utf8mb4_unicode_ci
+        WHERE sp.kb_id = #{kbId}
+        GROUP BY sp.scene, sp.node_id, n.name
+        ORDER BY count DESC
+        LIMIT 10
+    </select>
+
+    <!-- 热门来源站点统计 -->
+    <select id="getRefererHosts" resultType="com.chaitin.pandawiki.dto.stat.RefererHostResponse">
+        SELECT 
+            referer_host as refererHost,
+            COUNT(*) as count
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+        AND referer_host IS NOT NULL
+        AND referer_host != ''
+        GROUP BY referer_host
+        ORDER BY count DESC
+        LIMIT 10
+    </select>
+
+    <!-- 浏览器统计 -->
+    <select id="getBrowserStats" resultType="com.chaitin.pandawiki.dto.stat.TrendData">
+        SELECT 
+            browser_name as name,
+            COUNT(*) as count
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+        AND browser_name IS NOT NULL
+        AND browser_name != ''
+        GROUP BY browser_name
+        ORDER BY count DESC
+        LIMIT 10
+    </select>
+
+    <!-- 操作系统统计 -->
+    <select id="getOsStats" resultType="com.chaitin.pandawiki.dto.stat.TrendData">
+        SELECT 
+            browser_os as name,
+            COUNT(*) as count
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+        AND browser_os IS NOT NULL
+        AND browser_os != ''
+        GROUP BY browser_os
+        ORDER BY count DESC
+        LIMIT 10
+    </select>
+
+    <!-- 总计统计 -->
+    <select id="getCount" resultType="com.chaitin.pandawiki.dto.stat.CountStatsResponse">
+        SELECT 
+            COUNT(DISTINCT ip) as ipCount,
+            COUNT(DISTINCT session_id) as sessionCount,
+            COUNT(*) as pageVisitCount
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+    </select>
+
+    <!-- 对话数量统计 -->
+    <select id="getConversationCount" resultType="java.lang.Long">
+        SELECT COUNT(*)
+        FROM conversation
+        WHERE kb_id = #{kbId}
+    </select>
+
+    <!-- 即时访问统计（最近1小时，每分钟） -->
+    <select id="getInstantCount" resultType="com.chaitin.pandawiki.dto.stat.InstantCountResponse">
+        SELECT 
+            DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00') as time,
+            COUNT(*) as count
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 1 HOUR)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:00')
+        ORDER BY time ASC
+    </select>
+
+    <!-- 即时页面访问列表（最新10个页面） -->
+    <select id="getInstantPages" resultType="com.chaitin.pandawiki.dto.stat.InstantPageResponse">
+        SELECT 
+            sp.scene,
+            sp.node_id as nodeId,
+            n.name as nodeName,
+            sp.created_at as createdAt
+        FROM stat_page sp
+        LEFT JOIN node n ON sp.node_id COLLATE utf8mb4_unicode_ci = n.id COLLATE utf8mb4_unicode_ci 
+                         AND sp.kb_id COLLATE utf8mb4_unicode_ci = n.kb_id COLLATE utf8mb4_unicode_ci
+        WHERE sp.kb_id = #{kbId}
+        ORDER BY sp.created_at DESC
+        LIMIT 10
+    </select>
+
+    <!-- 地理位置统计（最近24小时） -->
+    <select id="getGeoCount" resultType="java.util.Map">
+        SELECT 
+            COALESCE(country, 'Unknown') as country,
+            COUNT(*) as count
+        FROM stat_page
+        WHERE kb_id = #{kbId}
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        GROUP BY country
+        ORDER BY count DESC
+    </select>
+
+    <!-- 对话分布统计（最近24小时） -->
+    <select id="getConversationDistribution" resultType="com.chaitin.pandawiki.dto.stat.ConversationDistributionResponse">
+        SELECT 
+            DATE_FORMAT(create_time, '%H:00') as time,
+            COUNT(*) as count
+        FROM conversation
+        WHERE kb_id = #{kbId}
+        AND create_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+        GROUP BY DATE_FORMAT(create_time, '%H:00')
+        ORDER BY time ASC
+    </select>
+
+</mapper>

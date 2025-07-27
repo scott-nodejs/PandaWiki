@@ -19,6 +19,22 @@ const nextConfig: NextConfig = {
             source: '/static-file/:path*',
             destination: `${process.env.NEXT_PUBLIC_API_URL}/static-file/:path*`,
             basePath: false as const,
+          },
+          // 代理所有API请求到后端
+          {
+            source: '/client/:path*',
+            destination: `${process.env.NEXT_PUBLIC_API_URL}/client/:path*`,
+            basePath: false as const,
+          },
+          {
+            source: '/share/:path*',
+            destination: `${process.env.NEXT_PUBLIC_API_URL}/share/:path*`,
+            basePath: false as const,
+          },
+          {
+            source: '/api/:path*',
+            destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+            basePath: false as const,
           }
         ]
       );

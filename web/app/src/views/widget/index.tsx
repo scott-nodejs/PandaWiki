@@ -49,6 +49,7 @@ const Widget = () => {
       sseClientRef.current.subscribe(
         JSON.stringify(reqData),
         ({ type, content }) => {
+          console.log('Widget SSE接收数据:', { type, content });
           if (type === 'conversation_id') {
             setConversationId((prev) => prev + content);
           } else if (type === 'nonce') {
@@ -64,11 +65,13 @@ const Widget = () => {
             });
             if (content) message.error(content);
           } else if (type === 'done') {
+            console.log('Widget收到done信号，清理加载状态');
             setLoading(false);
             setThinking(4);
           } else if (type === 'data') {
             setAnswer((prev) => {
               const newAnswer = prev + content;
+              console.log('Widget更新answer状态:', { prev, content, newAnswer });
               if (newAnswer.includes('</think>')) {
                 setThinking(3);
                 return newAnswer;
@@ -93,6 +96,7 @@ const Widget = () => {
       newConversation.push({ q: conversation[conversation.length - 1].q, a: answer });
     }
     newConversation.push({ q, a: '' });
+    console.log('Widget创建新对话:', { newConversation, question: q });
     setConversation(newConversation);
     setAnswer('');
     setTimeout(() => {
@@ -136,6 +140,18 @@ const Widget = () => {
         headers: {
           'Content-Type': 'application/json',
         },
+        onComplete: () => {
+          // SSE连接完成时清理加载状态
+          console.log('Widget SSE连接已完成');
+          setLoading(false);
+          setThinking(4);
+        },
+        onError: (error) => {
+          // SSE连接错误时清理加载状态
+          console.error('Widget SSE连接错误:', error);
+          setLoading(false);
+          setThinking(4);
+        },
       });
     }
   }, []);
@@ -165,7 +181,7 @@ const Widget = () => {
         >
           {widget?.settings?.widget_bot_settings?.btn_logo || widget?.settings?.icon ? <img src={widget?.settings?.widget_bot_settings?.btn_logo || widget?.settings?.icon} height={24} style={{ flexShrink: 0 }} />
             : <IconLogo sx={{ fontSize: 24 }} />}
-          <Ellipsis >{widget?.settings?.title || '在线客服'}</Ellipsis>
+          <Ellipsis >{widget?.settings?.widget_bot_settings?.btn_text || widget?.settings?.title || '在线客服'}</Ellipsis>
         </Stack>
         <Ellipsis sx={{ fontSize: 14, opacity: 0.7, mt: 0.5 }}>{widget?.settings?.welcome_str || '在线客服'}</Ellipsis>
       </Box>

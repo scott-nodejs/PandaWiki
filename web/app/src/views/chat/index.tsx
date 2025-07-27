@@ -36,6 +36,7 @@ const Chat = () => {
   const catalogSetting = kbDetail?.settings?.catalog_settings
 
   const chatAnswer = async (q: string) => {
+    console.log('chatAnswer开始:', { question: q });
     setChunkLoading(true);
     setLoading(true);
     setThinking(1);
@@ -54,29 +55,42 @@ const Chat = () => {
       sseClientRef.current.subscribe(
         JSON.stringify(reqData),
         ({ type, content, chunk_result }) => {
+          console.log('SSE接收数据:', { type, content, chunk_result });
           if (type === 'conversation_id') {
+            console.log('设置conversationId:', content);
             setConversationId((prev) => prev + content);
           } else if (type === 'nonce') {
+            console.log('设置nonce:', content);
             setNonce((prev) => prev + content);
           } else if (type === 'error') {
+            console.log('收到error信号:', content);
             setChunkLoading(false);
             setLoading(false);
             setThinking(4);
             setAnswer((prev) => {
-              if (content) {
-                return prev + `\n\n回答出现错误：<error>${content}</error>`;
-              }
-              return prev + '\n\n回答出现错误，请重试';
+              const newAnswer = content ? prev + `\n\n回答出现错误：<e>${content}</e>` : prev + '\n\n回答出现错误，请重试';
+              console.log('error时更新answer:', { prev, content, newAnswer });
+              return newAnswer;
             });
             if (content) message.error(content);
           } else if (type === 'done') {
+            console.log('收到done信号，清理加载状态');
             setChunkLoading(false);
             setLoading(false);
             setThinking(4);
           } else if (type === 'data') {
+            console.log('收到data信号:', { content, contentLength: content?.length });
             setChunkLoading(false);
             setAnswer((prev) => {
               const newAnswer = prev + content;
+              console.log('data时更新answer状态:', { 
+                prev: prev, 
+                prevLength: prev.length,
+                content: content, 
+                contentLength: content?.length,
+                newAnswer: newAnswer,
+                newAnswerLength: newAnswer.length 
+              });
               if (newAnswer.includes('</think>')) {
                 setThinking(3);
                 return newAnswer;
@@ -89,6 +103,7 @@ const Chat = () => {
               return newAnswer;
             });
           } else if (type === 'chunk_result') {
+            console.log('收到chunk_result:', chunk_result);
             setChunkResult((prev) => {
               return [...prev, chunk_result];
             });
@@ -99,16 +114,21 @@ const Chat = () => {
   };
 
   const onSearch = (q: string, reset: boolean = false) => {
+    console.log('onSearch开始:', { question: q, reset, loading, currentAnswer: answer });
     if (loading || !q.trim()) return;
     const newConversation = reset ? [] : [...conversation.slice(0, -1)];
     if (answer) {
       newConversation.push({ q: conversation[conversation.length - 1].q, a: answer });
     }
     newConversation.push({ q, a: '' });
+    console.log('创建新对话:', { newConversation, question: q });
     setConversation(newConversation);
+    console.log('重置answer状态为空');
     setAnswer('');
     setChunkResult([]);
+    console.log('准备调用chatAnswer');
     setTimeout(() => {
+      console.log('setTimeout执行chatAnswer');
       chatAnswer(q);
     }, 0);
   };
@@ -158,6 +178,20 @@ const Chat = () => {
         headers: {
           'Content-Type': 'application/json',
           'x-simple-auth-password': token || '',
+        },
+        onComplete: () => {
+          // SSE连接完成时清理加载状态
+          console.log('SSE连接已完成');
+          setChunkLoading(false);
+          setLoading(false);
+          setThinking(4);
+        },
+        onError: (error) => {
+          // SSE连接错误时清理加载状态
+          console.error('SSE连接错误:', error);
+          setChunkLoading(false);
+          setLoading(false);
+          setThinking(4);
         },
       });
     }

@@ -1,0 +1,47 @@
+# PandaWiki Backend 本地开发配置
+log:
+  level: 0  # 0: Debug, 1: Info, 2: Warn, 3: Error
+
+# HTTP服务配置
+http:
+  port: 8000
+
+# 数据库配置
+pg:
+  dsn: "host=localhost user=panda-wiki password=panda-wiki-secret dbname=panda-wiki port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+
+# Redis配置
+redis:
+  addr: "localhost:6379"
+  password: ""
+
+# 消息队列配置
+mq:
+  type: "nats"
+  nats:
+    server: "nats://localhost:4222"
+    user: "panda-wiki"
+    password: ""
+
+# RAG服务配置
+rag:
+  provider: "ct"
+  ct_rag:
+    base_url: "http://localhost:8080/api/v1"
+    api_key: "sk-1234567890"
+
+# 对象存储配置
+s3:
+  endpoint: "localhost:9000"
+  access_key: "s3panda-wiki"
+  secret_key: "panda-wiki-s3-secret"
+  max_file_size: 104857600  # 100MB
+
+# JWT配置
+auth:
+  type: "jwt"
+  jwt:
+    secret: "your-local-jwt-secret-key-change-me-in-production"
+
+# 管理员密码
+admin_password: "admin123" 

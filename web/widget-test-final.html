@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线客服功能测试 - 最终版</title>
+    <link rel="stylesheet" href="http://localhost:3000/widget-bot.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 4px solid;
+        }
+        .success { 
+            background-color: #d4edda; 
+            color: #155724; 
+            border-left-color: #28a745;
+        }
+        .error { 
+            background-color: #f8d7da; 
+            color: #721c24; 
+            border-left-color: #dc3545;
+        }
+        .info { 
+            background-color: #d1ecf1; 
+            color: #0c5460; 
+            border-left-color: #17a2b8;
+        }
+        .code-block {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .highlight {
+            background-color: #fff3cd;
+            padding: 20px;
+            border-radius: 6px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 在线客服功能测试 - 最终版</h1>
+        
+        <div class="highlight">
+            <h3>📋 配置信息</h3>
+            <p><strong>知识库ID:</strong> 7333663447fc415c8ac4349bbf0876e3</p>
+            <p><strong>后端API:</strong> http://localhost:8080</p>
+            <p><strong>前端静态文件:</strong> http://localhost:3000</p>
+            <p><strong>测试时间:</strong> <span id="test-time"></span></p>
+        </div>
+
+        <div class="status info">
+            <h3>🔍 自动测试结果</h3>
+            <div id="test-results">
+                <div>正在执行自动测试...</div>
+            </div>
+        </div>
+
+        <div class="highlight">
+            <h3>📝 使用说明</h3>
+            <p>1. <strong>在线客服按钮</strong>应该出现在页面右侧</p>
+            <p>2. <strong>点击按钮</strong>会弹出聊天窗口</p>
+            <p>3. <strong>按钮可以拖拽</strong>到不同位置</p>
+            <p>4. 如果没有显示，请查看上方的测试结果</p>
+        </div>
+
+        <details>
+            <summary><h3>🔧 正确的嵌入代码</h3></summary>
+            <div class="code-block">
+&lt;!--// Head 标签引入样式 --&gt;<br>
+&lt;link rel="stylesheet" href="http://localhost:3000/widget-bot.css"&gt;<br><br>
+&lt;!--// Body 标签引入挂件 --&gt;<br>
+&lt;script src="http://localhost:3000/widget-bot.js" data-kb-id="7333663447fc415c8ac4349bbf0876e3"&gt;&lt;/script&gt;
+            </div>
+        </details>
+
+        <details>
+            <summary><h3>🐛 故障排除</h3></summary>
+            <div>
+                <h4>常见问题：</h4>
+                <ul>
+                    <li><strong>404错误:</strong> 确保前端开发服务器在3000端口运行</li>
+                    <li><strong>CORS错误:</strong> 确保后端服务在8080端口运行</li>
+                    <li><strong>配置错误:</strong> 检查知识库ID是否正确</li>
+                    <li><strong>网络问题:</strong> 确保localhost可访问</li>
+                </ul>
+            </div>
+        </details>
+    </div>
+
+    <script>
+        // 显示测试时间
+        document.getElementById('test-time').textContent = new Date().toLocaleString('zh-CN');
+        
+        // 测试结果容器
+        const resultsContainer = document.getElementById('test-results');
+        
+        function addResult(type, message) {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            resultsContainer.appendChild(div);
+        }
+        
+        // 清除初始状态
+        resultsContainer.innerHTML = '';
+        
+        // 延迟执行测试，确保页面加载完成
+        setTimeout(() => {
+            // 测试1: 检查CSS是否加载
+            const cssLoaded = document.querySelector('link[href*="widget-bot.css"]');
+            if (cssLoaded) {
+                addResult('success', '✅ CSS样式文件链接已设置');
+            } else {
+                addResult('error', '❌ CSS样式文件链接缺失');
+            }
+            
+            // 测试2: 测试API接口
+            fetch('http://localhost:8080/client/v1/app/widget/info', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-KB-ID': '7333663447fc415c8ac4349bbf0876e3'
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    addResult('success', '✅ 后端API接口连接成功');
+                    return response.json();
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .then(data => {
+                if (data.success && data.data.settings && data.data.settings.widget_bot_settings) {
+                    const settings = data.data.settings.widget_bot_settings;
+                    addResult('success', `✅ Widget配置获取成功 - 开启状态: ${settings.is_open}, 主题: ${settings.theme_mode}`);
+                    
+                    if (settings.is_open) {
+                        addResult('success', '✅ 在线客服已开启');
+                    } else {
+                        addResult('error', '❌ 在线客服未开启');
+                    }
+                } else {
+                    addResult('error', '❌ API响应格式错误');
+                }
+            })
+            .catch(error => {
+                addResult('error', `❌ 后端API接口连接失败: ${error.message}<br><small>请确保后端服务运行在 http://localhost:8080</small>`);
+            });
+            
+            // 测试3: 检查前端静态文件
+            fetch('http://localhost:3000/widget-bot.css')
+            .then(response => {
+                if (response.ok) {
+                    addResult('success', '✅ 前端CSS文件访问成功');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .catch(error => {
+                addResult('error', `❌ 前端CSS文件访问失败: ${error.message}<br><small>请确保前端开发服务器运行在 http://localhost:3000</small>`);
+            });
+            
+            fetch('http://localhost:3000/widget-bot.js')
+            .then(response => {
+                if (response.ok) {
+                    addResult('success', '✅ 前端JS文件访问成功');
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            })
+            .catch(error => {
+                addResult('error', `❌ 前端JS文件访问失败: ${error.message}<br><small>请确保前端开发服务器运行在 http://localhost:3000</small>`);
+            });
+            
+            // 测试4: 等待widget脚本加载并检查按钮
+            let widgetCheckCount = 0;
+            const checkWidget = () => {
+                widgetCheckCount++;
+                const widgetButton = document.querySelector('.widget-bot-button');
+                
+                if (widgetButton) {
+                    addResult('success', '🎉 在线客服按钮已显示！您可以在页面右侧看到它');
+                } else if (widgetCheckCount < 15) {
+                    setTimeout(checkWidget, 1000);
+                } else {
+                    addResult('error', '❌ 等待15秒后仍未发现在线客服按钮<br><small>请检查浏览器控制台是否有JavaScript错误</small>');
+                }
+            };
+            
+            // 延迟检查widget按钮
+            setTimeout(checkWidget, 3000);
+            
+        }, 1000);
+        
+        // 监听console错误
+        window.addEventListener('error', function(e) {
+            addResult('error', `❌ JavaScript错误: ${e.message}<br><small>文件: ${e.filename}, 行: ${e.lineno}</small>`);
+        });
+        
+        // 设置全局变量（备用方案）
+        window.WIDGET_KB_ID = '7333663447fc415c8ac4349bbf0876e3';
+    </script>
+    
+    <!-- 加载widget脚本 -->
+    <script src="http://localhost:3000/widget-bot.js" data-kb-id="7333663447fc415c8ac4349bbf0876e3"></script>
+</body>
+</html> 
