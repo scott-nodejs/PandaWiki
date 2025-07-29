@@ -3,9 +3,9 @@ spring:
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://rm-2zetj73qo008qm813io.mysql.rds.aliyuncs.com:3306/pandawiki?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
-    username: yima
-    password: Nodejs123@@
+    url: jdbc:mysql://localhost:3306/pandawiki?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: root
     druid:
       # 初始连接数
       initial-size: 5
@@ -71,10 +71,10 @@ mybatis-plus:
 
 # 七牛云配置
 qiniu:
-  access-key: 7S_iVr-bCg2TwdpWuo86j1-yFWtTvuwYBY2Sds3H
-  secret-key: 6jFw93Id_i9Zs0EL2UuO9ibasGttPpDu1jQ2i82N
-  bucket: yima-h5  # 👈 修改为新的存储空间名称
-  domain: https://img.hazer.top/  # 👈 根据新空间的域名进行调整
+  access-key:
+  secret-key:
+  bucket:   # 👈 修改为新的存储空间名称
+  domain:  # 👈 根据新空间的域名进行调整
 
 # 爬虫服务配置
 crawler:
@@ -82,6 +82,7 @@ crawler:
   # 如: serviceUrl + "/parse_rss", serviceUrl + "/notion/get_list" 等
   serviceUrl: http://localhost:8080/mock/api/v1  # 基础API路径，去掉了具体的/scrape
   nginxUrl: http://localhost:8080  # 本地开发时使用localhost
+  staticUrl: https://img.hazer.top # 静态文件专属
 
 # JWT配置
 jwt:
@@ -98,6 +99,11 @@ rag:
 admin:
   password: admin123
 
+# 搜索引擎配置（临时使用mock值，避免启动错误）
+search:
+  engine: google
+  api-key: mock-api-key
+
 # 日志配置
 logging:
   level:
@@ -109,3 +115,19 @@ management:
   health:
     elasticsearch:
       enabled: false
+
+# LangChain4j 配置
+langchain4j:
+  dashscope:
+    chat-model:
+      # 请从 https://dashscope.console.aliyun.com/ 获取有效的API密钥
+      # 当前配置的是无效密钥，需要替换为真实的API密钥才能使用AI功能
+      api-key:
+      model-name: qwen-plus
+      temperature: 0.7
+    embedding-model:
+      # 请从 https://dashscope.console.aliyun.com/ 获取有效的API密钥
+      api-key:
+      model-name: text-embedding-v3
+  # 兼容性配置，暂时保留
+  api-key: sk-1234567890

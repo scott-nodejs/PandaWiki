@@ -1,91 +1,20 @@
-# 🐼 PandaWiki Backend 本地运行指南
+# 🐮 牛小库 Backend 本地运行指南
 
-## 📋 环境要求
+## 🎯 快速开始
 
-### 必需软件
-1. **Go 1.24.3+** - [下载地址](https://golang.org/dl/)
-2. **Docker Desktop** - [下载地址](https://www.docker.com/products/docker-desktop/)
-3. **Git** - [下载地址](https://git-scm.com/downloads)
+### 1. 环境要求
+- JDK 17+  
+- Maven 3.6+
+- MySQL 8.0+
+- Redis 6.0+
 
-### 可选软件
-- **VSCode** + Go扩展 - 推荐的开发环境
-- **DataGrip** 或 **pgAdmin** - 数据库管理工具
+### 2. 数据库配置
+配置MySQL数据库连接信息在 `application.yml` 中
 
-## 🚀 快速开始
-
-### 方法一：使用启动脚本（推荐）
-
-```powershell
-# 1. 确保在项目根目录
+### 3. 启动应用
+```bash
+# 进入项目目录
 cd E:\product\pandawiki\PandaWiki
-
-# 2. 运行启动脚本
-.\run-local.ps1
-
-# 3. 按照脚本提示运行后续命令
-```
-
-### 方法二：手动步骤
-
-#### 1. 启动依赖服务
-```bash
-# 启动Docker服务
-docker-compose -f docker-compose.dev.yml up -d
-
-# 查看服务状态
-docker-compose -f docker-compose.dev.yml ps
-```
-
-#### 2. 安装Go工具
-```bash
-# 安装代码生成工具
-go install github.com/google/wire/cmd/wire@latest
-go install github.com/swaggo/swag/cmd/swag@latest
-```
-
-#### 3. 生成代码
-```bash
-cd backend
-
-# 下载依赖
-go mod download
-
-# 生成Swagger文档
-swag fmt
-swag init -g cmd/api/main.go --pd
-
-# 生成依赖注入代码
-wire cmd/api/wire.go
-wire cmd/consumer/wire.go
-wire cmd/migrate/wire.go
-```
-
-#### 4. 运行服务
-
-**终端1 - 数据库迁移：**
-```bash
-cd backend
-go run cmd/migrate/main.go cmd/migrate/wire_gen.go
-```
-
-**终端2 - API服务：**
-```bash
-cd backend
-
-# 设置配置文件路径
-$env:CONFIG_FILE="config/config.local.yml"
-
-go run cmd/api/main.go cmd/api/wire_gen.go
-```
-
-**终端3 - 消费者服务：**
-```bash
-cd backend
-
-# 设置配置文件路径
-$env:CONFIG_FILE="config/config.local.yml"
-
-go run cmd/consumer/main.go cmd/consumer/wire_gen.go
 ```
 
 ## 🌐 服务地址

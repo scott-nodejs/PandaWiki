@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI聊天测试 - 真实AI助手</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .control-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .button-group {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .chat-area {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            background-color: #f9f9f9;
+            margin-bottom: 20px;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .user-message {
+            background: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .assistant-message {
+            background: #e9ecef;
+            color: #333;
+        }
+        .system-message {
+            background: #d4edda;
+            color: #155724;
+            text-align: center;
+            max-width: 100%;
+            font-style: italic;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            text-align: center;
+            max-width: 100%;
+        }
+        .info-panel {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            font-size: 14px;
+        }
+        .info-item {
+            margin-bottom: 8px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .status {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .connected { background: #d4edda; color: #155724; }
+        .connecting { background: #fff3cd; color: #856404; }
+        .disconnected { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AI聊天测试 - SSE事件格式</h1>
+            <p>测试新的SSE事件格式，支持会话ID、文档搜索、逐步响应等功能</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="kbId">知识库ID：</label>
+                <input type="text" id="kbId" value="7333663447fc415c8ac4349bbf0876e3" placeholder="输入知识库ID">
+            </div>
+            
+            <div class="control-group">
+                <label for="conversationId">会话ID（可选）：</label>
+                <input type="text" id="conversationId" placeholder="留空自动生成">
+            </div>
+            
+            <div class="control-group">
+                <label for="webSearch">搜索模式：</label>
+                <select id="webSearch">
+                    <option value="false">知识库搜索</option>
+                    <option value="true">联网搜索</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="message">消息内容：</label>
+                <textarea id="message" rows="3" placeholder="输入您的问题..."></textarea>
+            </div>
+            
+            <div class="button-group">
+                <button id="sendBtn" onclick="sendMessage()">发送消息</button>
+                <button id="clearBtn" onclick="clearChat()">清空对话</button>
+            </div>
+        </div>
+
+        <div class="chat-area" id="chatArea">
+            <div class="message system-message">
+                欢迎使用AI聊天测试！输入消息开始对话。
+            </div>
+        </div>
+
+        <div class="info-panel">
+            <div class="info-item">
+                <span class="info-label">连接状态：</span>
+                <span class="status disconnected" id="status">未连接</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">API地址：</span>
+                <span id="apiUrl">http://localhost:8080/client/v1/chat/widget</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">消息计数：</span>
+                <span id="messageCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messageCount = 0;
+
+        function updateStatus(status, text) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${status}`;
+            statusEl.textContent = text;
+        }
+
+        function addMessage(role, content) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}-message`;
+            messageDiv.innerHTML = content.replace(/\n/g, '<br>');
+            
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            
+            messageCount++;
+            document.getElementById('messageCount').textContent = messageCount;
+        }
+
+        function sendMessage() {
+            const kbId = document.getElementById('kbId').value.trim();
+            const message = document.getElementById('message').value.trim();
+            const conversationId = document.getElementById('conversationId').value.trim();
+            const isWebSearch = document.getElementById('webSearch').value === 'true';
+            
+            if (!kbId) {
+                alert('请输入知识库ID');
+                return;
+            }
+            
+            if (!message) {
+                alert('请输入消息内容');
+                return;
+            }
+            
+            const sendBtn = document.getElementById('sendBtn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = '发送中...';
+            
+            updateStatus('connecting', '连接中');
+            
+            // 添加用户消息到界面
+            addMessage('user', message);
+            
+            // 构建请求数据
+            const requestData = {
+                message: message,
+                conversation_id: conversationId || null,
+                app_type: 2,
+                isWebSearchRequest: isWebSearch
+            };
+            
+            // 建立连接
+            const url = 'http://localhost:8080/client/v1/chat/widget';
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-KB-ID': kbId,
+                    'Accept': 'text/event-stream',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify(requestData)
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                updateStatus('connected', '已连接');
+                
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let assistantMessage = '';
+                let assistantMessageEl = null;
+                
+                function readStream() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            updateStatus('disconnected', '连接关闭');
+                            sendBtn.disabled = false;
+                            sendBtn.textContent = '发送消息';
+                            return;
+                        }
+                        
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+                        
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                const dataStr = line.substring(6);
+                                
+                                if (dataStr === '[DONE]') {
+                                    console.log('对话完成');
+                                    return;
+                                }
+                                
+                                try {
+                                    // 尝试解析JSON数据
+                                    const eventData = JSON.parse(dataStr);
+                                    
+                                    console.log('收到事件:', eventData);
+                                    
+                                    // 根据事件类型处理
+                                    switch(eventData.type) {
+                                        case 'conversation_id':
+                                            console.log('会话ID:', eventData.content);
+                                            // 可以更新页面上的会话ID显示
+                                            break;
+                                            
+                                        case 'nonce':
+                                            console.log('Nonce:', eventData.content);
+                                            break;
+                                            
+                                        case 'chunk_result':
+                                            console.log('文档块结果:', eventData.chunkResult);
+                                            // 显示搜索到的文档信息
+                                            if (eventData.chunkResult) {
+                                                addMessage('system', 
+                                                    `📚 找到相关文档：${eventData.chunkResult.name}\n` +
+                                                    `📄 摘要：${eventData.chunkResult.summary}`
+                                                );
+                                            }
+                                            break;
+                                            
+                                        case 'data':
+                                            // AI回答的内容
+                                            if (eventData.content && eventData.content.trim() !== '') {
+                                                if (!assistantMessageEl) {
+                                                    const chatArea = document.getElementById('chatArea');
+                                                    assistantMessageEl = document.createElement('div');
+                                                    assistantMessageEl.className = 'message assistant-message';
+                                                    chatArea.appendChild(assistantMessageEl);
+                                                    assistantMessage = '';
+                                                }
+                                                
+                                                assistantMessage += eventData.content;
+                                                assistantMessageEl.innerHTML = assistantMessage.replace(/\n/g, '<br>');
+                                                
+                                                const chatArea = document.getElementById('chatArea');
+                                                chatArea.scrollTop = chatArea.scrollHeight;
+                                            }
+                                            break;
+                                            
+                                        case 'done':
+                                            console.log('对话完成');
+                                            updateStatus('disconnected', '连接关闭');
+                                            sendBtn.disabled = false;
+                                            sendBtn.textContent = '发送消息';
+                                            return;
+                                            
+                                        case 'error':
+                                            console.error('服务器错误:', eventData.content);
+                                            addMessage('error', `错误: ${eventData.content}`);
+                                            updateStatus('disconnected', '连接错误');
+                                            sendBtn.disabled = false;
+                                            sendBtn.textContent = '发送消息';
+                                            return;
+                                            
+                                        default:
+                                            console.log('未知事件类型:', eventData.type, eventData);
+                                    }
+                                    
+                                } catch (parseError) {
+                                    // 如果不是JSON格式，作为普通文本处理
+                                    console.log('普通文本数据:', dataStr);
+                                    if (dataStr && dataStr !== '[DONE]') {
+                                        if (!assistantMessageEl) {
+                                            const chatArea = document.getElementById('chatArea');
+                                            assistantMessageEl = document.createElement('div');
+                                            assistantMessageEl.className = 'message assistant-message';
+                                            chatArea.appendChild(assistantMessageEl);
+                                            assistantMessage = '';
+                                        }
+                                        
+                                        assistantMessage += dataStr;
+                                        assistantMessageEl.innerHTML = assistantMessage.replace(/\n/g, '<br>');
+                                        
+                                        const chatArea = document.getElementById('chatArea');
+                                        chatArea.scrollTop = chatArea.scrollHeight;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        readStream();
+                    }).catch(error => {
+                        console.error('读取流失败:', error);
+                        updateStatus('disconnected', '连接错误');
+                        addMessage('error', `错误: ${error.message}`);
+                        sendBtn.disabled = false;
+                        sendBtn.textContent = '发送消息';
+                    });
+                }
+                
+                readStream();
+                
+            }).catch(error => {
+                console.error('发送消息失败:', error);
+                updateStatus('disconnected', '连接失败');
+                addMessage('error', `连接失败: ${error.message}`);
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送消息';
+            });
+            
+            // 清空输入框
+            document.getElementById('message').value = '';
+        }
+
+        function clearChat() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '<div class="message system-message">对话已清空</div>';
+            messageCount = 0;
+            document.getElementById('messageCount').textContent = messageCount;
+        }
+
+        // 回车发送消息
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // 页面加载完成
+        document.addEventListener('DOMContentLoaded', function() {
+            addMessage('system', 'AI聊天测试页面已加载！\n\n✨ 新功能特性：\n📱 SSE事件格式\n🆔 会话ID追踪\n📚 文档块搜索结果\n💬 逐步流式响应\n🔧 错误处理优化\n\n现在可以开始对话了！');
+        });
+    </script>
+</body>
+</html> 

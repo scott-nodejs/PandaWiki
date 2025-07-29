@@ -1,0 +1,23 @@
+# 文件解析器SPI配置
+# 每行一个实现类的全限定名
+
+# 文本文件解析器
+com.chaitin.pandawiki.parse.impl.TxtFileParser
+
+# Markdown文件解析器
+com.chaitin.pandawiki.parse.impl.MarkdownFileParser
+
+# HTML文件解析器
+com.chaitin.pandawiki.parse.impl.HtmlFileParser
+
+# Word文档解析器
+com.chaitin.pandawiki.parse.impl.WordFileParser
+
+# Excel文档解析器
+com.chaitin.pandawiki.parse.impl.ExcelFileParser
+
+# PDF文档解析器
+com.chaitin.pandawiki.parse.impl.PdfFileParser
+
+# PowerPoint文档解析器
+com.chaitin.pandawiki.parse.impl.PowerPointFileParser 

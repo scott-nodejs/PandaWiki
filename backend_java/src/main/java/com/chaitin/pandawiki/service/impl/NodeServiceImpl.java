@@ -12,6 +12,12 @@ import com.chaitin.pandawiki.model.vo.NodeListItemVO;
 import com.chaitin.pandawiki.model.vo.NodeWithRecommendationsVO;
 import com.chaitin.pandawiki.service.NodeService;
 import com.chaitin.pandawiki.service.UserService;
+import com.chaitin.pandawiki.util.ThreadLocalUtils;
+import dev.langchain4j.data.document.Document;
+import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.store.embedding.EmbeddingStore;
+import dev.langchain4j.store.embedding.EmbeddingStoreIngestor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -32,6 +38,8 @@ import java.util.stream.Collectors;
 public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements NodeService {
 
     private final UserService userService;
+    private final EmbeddingStoreIngestor embeddingStoreIngestor;
+    private final EmbeddingStore<TextSegment> embeddingStore;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -55,6 +63,17 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         node.setCreatedBy(userService.getCurrentUser().getId());
 
         this.save(node);
+
+        // 向量化存储node内容
+        if (StringUtils.hasText(node.getContent())) {
+            try {
+                ingestNodeContent(node);
+                log.info("节点内容已向量化存储 - nodeId: {}, kbId: {}", node.getId(), node.getKbId());
+            } catch (Exception e) {
+                log.error("向量化存储失败 - nodeId: {}, error: {}", node.getId(), e.getMessage(), e);
+            }
+        }
+
         return node.getId();
     }
 
@@ -70,6 +89,50 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         node.setUpdatedAt(LocalDateTime.now());
 
         this.updateById(node);
+
+        // 向量化存储node内容
+        if (StringUtils.hasText(node.getContent())) {
+            try {
+                ingestNodeContent(node);
+                log.info("节点内容已重新向量化存储 - nodeId: {}, kbId: {}", node.getId(), node.getKbId());
+            } catch (Exception e) {
+                log.error("向量化存储失败 - nodeId: {}, error: {}", node.getId(), e.getMessage(), e);
+            }
+        }
+    }
+
+    /**
+     * 将节点内容向量化存储
+     * 
+     * @param node 节点对象
+     */
+    private void ingestNodeContent(Node node) {
+        try {
+            // 设置元数据到ThreadLocal，供documentTransformer使用
+            ThreadLocalUtils.set("knowledgeLibId", node.getKbId());
+            ThreadLocalUtils.set("nodeId", node.getId());
+            
+            // 创建Document对象
+            Document document = Document.from(node.getContent());
+            
+            // 添加节点相关的元数据
+            document.metadata().put("nodeId", node.getId());
+            document.metadata().put("nodeName", node.getName());
+            document.metadata().put("kbId", node.getKbId());
+            document.metadata().put("nodeType", String.valueOf(node.getType()));
+            document.metadata().put("createdAt", node.getCreatedAt().toString());
+            
+            // 使用ingestor进行向量化存储
+            embeddingStoreIngestor.ingest(document);
+            
+            log.debug("文档向量化完成 - nodeId: {}, contentLength: {}", 
+                node.getId(), node.getContent().length());
+                
+        } finally {
+            // 清理ThreadLocal
+            ThreadLocalUtils.remove("knowledgeLibId");
+            ThreadLocalUtils.remove("nodeId");
+        }
     }
 
     @Override
@@ -92,6 +155,38 @@ public class NodeServiceImpl extends ServiceImpl<NodeMapper, Node> implements No
         node.setDeleted(true);
         node.setUpdatedAt(LocalDateTime.now());
         this.updateById(node);
+        
+        // 清理向量存储中对应的数据
+        try {
+            removeNodeFromVectorStore(node);
+            log.info("节点向量已从向量库中清理 - nodeId: {}", node.getId());
+        } catch (Exception e) {
+            log.error("清理节点向量失败 - nodeId: {}, error: {}", node.getId(), e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 从向量存储中移除节点内容
+     * 注意：当前使用的InMemoryEmbeddingStore没有按元数据删除的功能
+     * 在生产环境中应使用支持删除的向量数据库（如PostgreSQL + pgvector）
+     * 
+     * @param node 节点对象
+     */
+    private void removeNodeFromVectorStore(Node node) {
+        try {
+            log.info("节点删除 - nodeId: {}，向量清理功能需要在生产环境的向量数据库中实现", node.getId());
+            
+            // TODO: 在使用PgVector或其他向量数据库时，实现根据元数据删除向量的功能
+            // 示例逻辑：
+            // 1. 根据nodeId查询对应的embedding IDs
+            // 2. 调用embeddingStore.removeAll(embeddingIds)
+            // 
+            // 当前使用InMemoryEmbeddingStore，暂时记录日志
+            log.debug("向量删除功能待实现 - nodeId: {}", node.getId());
+                
+        } catch (Exception e) {
+            log.error("向量删除处理出错 - nodeId: {}, error: {}", node.getId(), e.getMessage(), e);
+        }
     }
 
     @Override

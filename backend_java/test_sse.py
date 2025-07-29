@@ -162,7 +162,7 @@ def test_widget_chat():
         return False
 
 if __name__ == "__main__":
-    print("🔧 PandaWiki SSE聊天接口测试")
+    print("🔧 牛小库 SSE聊天接口测试")
     print("🎯 目标：验证SSE接口正常工作且无Shiro相关异常")
     print("=" * 80)
     
