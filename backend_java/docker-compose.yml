@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  pandawiki-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pandawiki-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./logs:/app/logs
+      - ./config:/app/config
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    restart: unless-stopped
+    networks:
+      - pandawiki-network
+
+networks:
+  pandawiki-network:
+    driver: bridge 

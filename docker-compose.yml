@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  pandawiki-app:
+    build:
+      context: ./web/app
+      dockerfile: Dockerfile
+    container_name: pandawiki-app
+    ports:
+      - "80:80"
+    depends_on:
+      - pandawiki-backend
+    networks:
+      - pandawiki-network
+
+  pandawiki-admin:
+    build:
+      context: ./web/admin
+      dockerfile: Dockerfile
+    container_name: pandawiki-admin
+    ports:
+      - "8081:80"
+    depends_on:
+      - pandawiki-backend
+    networks:
+      - pandawiki-network
+
+  pandawiki-backend:
+    build:
+      context: ./backend_java
+      dockerfile: Dockerfile
+    container_name: pandawiki-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend_java/logs:/app/logs
+      - ./backend_java/config:/app/config
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - JAVA_OPTS=-Xmx512m -Xms256m
+    restart: unless-stopped
+    networks:
+      - pandawiki-network
+
+networks:
+  pandawiki-network:
+    driver: bridge 
