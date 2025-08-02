@@ -1,11 +1,21 @@
 spring:
+  application:
+    name: pandawiki
+  profiles:
+    active: dev  # 默认激活开发环境
+    include: 
+      - mineru  # 引入 MinerU 配置
+  task:
+    scheduling:
+      enable: true  # 启用定时任务（用于临时文件清理）
+
   # 数据库配置
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/pandawiki?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: jdbc:mysql://rm-2zetj73qo008qm813io.mysql.rds.aliyuncs.com:3306/pandawiki?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai
+    username: yima
+    password: Nodejs123@@
     druid:
       # 初始连接数
       initial-size: 5
@@ -71,10 +81,10 @@ mybatis-plus:
 
 # 七牛云配置
 qiniu:
-  access-key:
-  secret-key:
-  bucket:   # 👈 修改为新的存储空间名称
-  domain:  # 👈 根据新空间的域名进行调整
+  access-key: 7S_iVr-bCg2TwdpWuo86j1-yFWtTvuwYBY2Sds3H
+  secret-key: 6jFw93Id_i9Zs0EL2UuO9ibasGttPpDu1jQ2i82N
+  bucket: yima-h5  # 👈 修改为新的存储空间名称
+  domain: https://img.hazer.top # 👈 根据新空间的域名进行调整
 
 # 爬虫服务配置
 crawler:
@@ -108,7 +118,12 @@ search:
 logging:
   level:
     root: INFO
-    com.chaitin.pandawiki: DEBUG
+    com.chaitin.pandawiki: INFO
+    # MinerU 相关日志级别
+    com.chaitin.pandawiki.parse.impl.MinerUPdfParser: INFO
+    com.chaitin.pandawiki.service.impl.LocalTempFileStorageService: INFO
+    com.chaitin.pandawiki.task.TempFileCleanupTask: INFO
+    com.chaitin.pandawiki.config.MinerUConfiguration: INFO
 
 # 关闭健康检查
 management:
@@ -122,12 +137,14 @@ langchain4j:
     chat-model:
       # 请从 https://dashscope.console.aliyun.com/ 获取有效的API密钥
       # 当前配置的是无效密钥，需要替换为真实的API密钥才能使用AI功能
-      api-key:
+      api-key: sk-da3ae08b2a9741d687ccb37a8d8c1029
       model-name: qwen-plus
       temperature: 0.7
     embedding-model:
       # 请从 https://dashscope.console.aliyun.com/ 获取有效的API密钥
-      api-key:
+      api-key: sk-da3ae08b2a9741d687ccb37a8d8c1029
       model-name: text-embedding-v3
   # 兼容性配置，暂时保留
   api-key: sk-1234567890
+
+

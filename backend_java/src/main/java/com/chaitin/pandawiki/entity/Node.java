@@ -1,6 +1,8 @@
 package com.chaitin.pandawiki.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -78,6 +80,8 @@ public class Node {
     /**
      * 是否删除
      */
+    @TableField(value = "deleted", select = false)
+    @TableLogic(delval = "1", value = "0")
     private Boolean deleted;
 
     /**

@@ -1,4 +1,14 @@
 spring:
+  application:
+    name: pandawiki
+  profiles:
+    active: dev  # 默认激活开发环境
+    include: 
+      - mineru  # 引入 MinerU 配置
+  task:
+    scheduling:
+      enable: true  # 启用定时任务（用于临时文件清理）
+
   # 数据库配置
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
@@ -74,7 +84,7 @@ qiniu:
   access-key: 7S_iVr-bCg2TwdpWuo86j1-yFWtTvuwYBY2Sds3H
   secret-key: 6jFw93Id_i9Zs0EL2UuO9ibasGttPpDu1jQ2i82N
   bucket: yima-h5  # 👈 修改为新的存储空间名称
-  domain: https://img.hazer.top/  # 👈 根据新空间的域名进行调整
+  domain: https://img.hazer.top # 👈 根据新空间的域名进行调整
 
 # 爬虫服务配置
 crawler:
@@ -108,7 +118,12 @@ search:
 logging:
   level:
     root: INFO
-    com.chaitin.pandawiki: DEBUG
+    com.chaitin.pandawiki: INFO
+    # MinerU 相关日志级别
+    com.chaitin.pandawiki.parse.impl.MinerUPdfParser: INFO
+    com.chaitin.pandawiki.service.impl.LocalTempFileStorageService: INFO
+    com.chaitin.pandawiki.task.TempFileCleanupTask: INFO
+    com.chaitin.pandawiki.config.MinerUConfiguration: INFO
 
 # 关闭健康检查
 management:
@@ -131,3 +146,5 @@ langchain4j:
       model-name: text-embedding-v3
   # 兼容性配置，暂时保留
   api-key: sk-1234567890
+
+

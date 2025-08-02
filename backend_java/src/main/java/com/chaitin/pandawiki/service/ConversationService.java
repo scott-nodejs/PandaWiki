@@ -44,4 +44,20 @@ public interface ConversationService extends IService<Conversation> {
      * @param id 会话ID
      */
     void deleteConversation(String id);
+
+    /**
+     * 重置会话状态 - 用于解决 QwenHelper 消息处理错误
+     * 
+     * @param conversationId 会话ID
+     * @return 是否重置成功
+     */
+    boolean resetConversationState(String conversationId);
+    
+    /**
+     * 清理异常会话 - 删除可能导致 QwenHelper 错误的消息
+     * 
+     * @param conversationId 会话ID
+     * @return 清理的消息数量
+     */
+    int cleanupCorruptedMessages(String conversationId);
 } 

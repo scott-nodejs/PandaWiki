@@ -20,9 +20,12 @@ import java.util.List;
 import java.util.UUID;
 
 /**
+ * 持久化聊天记忆存储
+ * 解决 QwenHelper 消息处理错误的增强版本
+ * 
  * @author: iohw
  * @date: 2025/4/13 10:35
- * @description:
+ * @description: 增强版聊天记忆存储，修复消息重复和空列表问题
  */
 @Slf4j
 @Component
@@ -39,10 +42,13 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
     @Override
     public List<ChatMessage> getMessages(Object o) {
         String memoryId = (String) o;
+        log.debug("正在获取会话 {} 的消息", memoryId);
+        
         String json = cache.getIfPresent(memoryId);
-        if(StringUtils.hasText(json)) {
+        if (StringUtils.hasText(json)) {
             // 走缓存
             List<ChatMessage> cachedMessages = ChatMessageDeserializer.messagesFromJson(json);
+            log.debug("从缓存获取会话 {} 的消息数量: {}", memoryId, cachedMessages.size());
             return ensureValidMessageStructure(cachedMessages, memoryId);
         }
 
@@ -87,7 +93,9 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
         }
         
         // 确保消息结构有效
-        return ensureValidMessageStructure(messages, memoryId);
+        List<ChatMessage> validMessages = ensureValidMessageStructure(messages, memoryId);
+        log.debug("会话 {} 最终有效消息数量: {}", memoryId, validMessages.size());
+        return validMessages;
     }
     
     /**
@@ -95,58 +103,96 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
      * 1. 至少包含一条系统消息
      * 2. 消息顺序正确
      * 3. 避免重复的用户消息
+     * 4. 确保列表不为空
      */
     private List<ChatMessage> ensureValidMessageStructure(List<ChatMessage> messages, String memoryId) {
         List<ChatMessage> validMessages = new ArrayList<>();
         
-        // 确保第一条是系统消息
+        log.debug("开始验证会话 {} 的消息结构，原消息数量: {}", memoryId, messages.size());
+        
+        // 1. 确保第一条是系统消息
         boolean hasSystemMessage = messages.stream().anyMatch(msg -> msg instanceof SystemMessage);
         if (!hasSystemMessage) {
             log.debug("会话 {} 缺少系统消息，添加默认系统消息", memoryId);
             validMessages.add(SystemMessage.from("你是一个专业的AI助手，请根据用户的问题提供准确、有用的回答。"));
         }
         
-        // 去重和排序消息，避免QwenHelper警告
+        // 2. 去重和排序消息，避免QwenHelper警告
         String lastUserMessage = null;
+        String lastAiMessage = null;
+        
         for (ChatMessage message : messages) {
             if (message instanceof SystemMessage && !hasSystemMessage) {
                 validMessages.add(message);
                 hasSystemMessage = true;
+                log.debug("添加系统消息");
             } else if (message instanceof UserMessage) {
                 String userText = ((UserMessage) message).singleText();
                 // 避免重复的用户消息
-                if (!userText.equals(lastUserMessage)) {
+                if (userText != null && !userText.equals(lastUserMessage)) {
                     validMessages.add(message);
                     lastUserMessage = userText;
+                    log.debug("添加用户消息: {}", userText.length() > 50 ? userText.substring(0, 50) + "..." : userText);
                 } else {
                     log.debug("跳过重复的用户消息: {}", userText);
                 }
             } else if (message instanceof AiMessage) {
+                String aiText = ((AiMessage) message).text();
+                // 避免重复的AI消息
+                if (aiText != null && !aiText.equals(lastAiMessage)) {
+                    validMessages.add(message);
+                    lastAiMessage = aiText;
+                    log.debug("添加AI消息: {}", aiText.length() > 50 ? aiText.substring(0, 50) + "..." : aiText);
+                } else {
+                    log.debug("跳过重复的AI消息");
+                }
+            } else if (message instanceof ToolExecutionResultMessage) {
+                // 工具消息直接添加，不去重
                 validMessages.add(message);
+                log.debug("添加工具执行结果消息");
             }
         }
         
-        // 如果仍然没有消息，添加默认系统消息
+        // 3. 如果仍然没有消息，添加默认系统消息
         if (validMessages.isEmpty()) {
-            log.debug("会话 {} 的消息列表为空，添加默认系统消息", memoryId);
+            log.warn("会话 {} 的消息列表为空，添加默认系统消息", memoryId);
             validMessages.add(SystemMessage.from("你是一个专业的AI助手，请根据用户的问题提供准确、有用的回答。"));
         }
         
-        log.debug("会话 {} 最终消息数量: {}", memoryId, validMessages.size());
+        // 4. 确保消息顺序正确（SystemMessage 在前）
+        validMessages.sort((a, b) -> {
+            if (a instanceof SystemMessage && !(b instanceof SystemMessage)) return -1;
+            if (!(a instanceof SystemMessage) && b instanceof SystemMessage) return 1;
+            return 0;
+        });
+        
+        log.debug("会话 {} 消息结构验证完成，有效消息数量: {}", memoryId, validMessages.size());
+        
+        // 5. 最终安全检查
+        if (validMessages.isEmpty()) {
+            log.error("严重错误：会话 {} 的消息列表仍然为空，这可能导致 QwenHelper 错误", memoryId);
+            validMessages.add(SystemMessage.from("系统初始化消息"));
+        }
+        
         return validMessages;
     }
 
     @Override
     public void updateMessages(Object o, List<ChatMessage> list) {
-        String json = ChatMessageSerializer.messagesToJson(list);
-        cache.put(o.toString(), json);
+        String memoryId = o.toString();
+        log.debug("正在更新会话 {} 的消息，数量: {}", memoryId, list.size());
+        
+        // 先进行消息结构验证
+        List<ChatMessage> validatedMessages = ensureValidMessageStructure(list, memoryId);
+        
+        String json = ChatMessageSerializer.messagesToJson(validatedMessages);
+        cache.put(memoryId, json);
         
         // 全量清空旧数据 + 全量增加新数据
-        String memoryId = o.toString();
         deleteMessages(memoryId);
         
         List<ConversationMessage> messageList = new ArrayList<>();
-        for (ChatMessage chatMessage : list) {
+        for (ChatMessage chatMessage : validatedMessages) {
             try {
                 String role = getRoleFromMessage(chatMessage);
                 String content = getContentMessage(chatMessage);
@@ -159,7 +205,7 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
                 
                 // 若经过rag增强，分离出用户原始输入信息与被增加的输入信息
                 String originContent = content;
-                if(isUserMessageEnhanced(content)) {
+                if (isUserMessageEnhanced(content)) {
                     originContent = content.substring(0, content.lastIndexOf("\n文档/文件/附件的内容如下，你可以基于下面的内容回答:\n"));
                 }
                 
@@ -193,6 +239,7 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
     @Override
     public void deleteMessages(Object o) {
         String memoryId = o.toString();
+        log.debug("正在删除会话 {} 的所有消息", memoryId);
         LambdaQueryWrapper<ConversationMessage> queryWrapper = Wrappers.<ConversationMessage>lambdaQuery()
                 .eq(ConversationMessage::getConversationId, memoryId);
         conversationMessageMapper.delete(queryWrapper);
@@ -205,7 +252,7 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
             return "user";
         } else if (message instanceof AiMessage) {
             return "assistant";
-        }else if (message instanceof ToolExecutionResultMessage) {
+        } else if (message instanceof ToolExecutionResultMessage) {
             return "tool";
         } else if (message instanceof CustomMessage) {
             return "custom";
@@ -217,11 +264,10 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
         if (message instanceof SystemMessage) {
             return ((SystemMessage) message).text();
         } else if (message instanceof UserMessage) {
-
             return ((UserMessage) message).singleText();
         } else if (message instanceof AiMessage) {
             return ((AiMessage) message).text();
-        }else if (message instanceof ToolExecutionResultMessage) {
+        } else if (message instanceof ToolExecutionResultMessage) {
             // 工具执行结果需要特殊处理
             ToolExecutionResultMessage toolMsg = (ToolExecutionResultMessage) message;
             return String.format("{id: %s, tool_name: %s, execution_result: %s}",
@@ -232,9 +278,11 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
         }
         throw new IllegalArgumentException("Unknown message type: " + message.getClass().getName());
     }
+    
     private static boolean isUserMessageEnhanced(String userMessage) {
         return userMessage.contains("\n文档/文件/附件的内容如下，你可以基于下面的内容回答:\n");
     }
+    
     private ToolExecutionResultMessage parseToolMessage(String content) {
         // 简单实现 - 实际应根据存储格式调整
         try {
@@ -245,6 +293,9 @@ public class PersistentChatMemoryStore implements ChatMemoryStore {
                     json.getString("execution_result")
             );
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("解析工具消息失败: {}", e.getMessage());
+            // 返回一个默认的工具消息
+            return new ToolExecutionResultMessage("unknown", "unknown", content);
         }
-    }}
+    }
+}

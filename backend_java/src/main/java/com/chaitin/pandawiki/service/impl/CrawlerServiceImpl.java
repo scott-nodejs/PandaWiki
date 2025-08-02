@@ -181,7 +181,7 @@ public class CrawlerServiceImpl implements CrawlerService {
             String markdownContent;
 
             try (InputStream inputStream = new ByteArrayInputStream(fileContent)) {
-                markdownContent = fileParserFactory.parseToMarkdown(inputStream, fileName);
+                markdownContent = fileParserFactory.parseToMarkdown(inputStream, fileUrl);
                 log.info("文件解析完成: {}, 内容长度: {}", fileName, markdownContent.length());
             }
 

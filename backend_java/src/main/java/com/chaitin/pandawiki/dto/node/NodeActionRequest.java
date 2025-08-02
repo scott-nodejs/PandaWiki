@@ -22,10 +22,10 @@ public class NodeActionRequest {
 
     @NotEmpty(message = "知识库ID不能为空")
     @Schema(description = "知识库ID")
-    private String kbId;
+    private String kb_id;
 
     @NotEmpty(message = "操作类型不能为空")
     @Pattern(regexp = "^(delete|private|public)$", message = "操作类型只能是delete、private或public")
     @Schema(description = "操作类型：delete-删除，private-设为私有，public-设为公开")
     private String action;
-} 
+}
